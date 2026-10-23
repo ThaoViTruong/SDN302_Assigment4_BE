@@ -249,10 +249,38 @@ const deleteQuiz = async (req, res, next) => {
             });
         }
 
+        const questionIds = quiz.questions.map(questionId => questionId.toString());
+
         await quiz.deleteOne();
 
+        let deletedQuestionCount = 0;
+
+        if (questionIds.length > 0) {
+            const stillAttachedQuestionIds = await Quiz.distinct("questions", {
+                _id: { $ne: quiz._id },
+                questions: { $in: questionIds }
+            });
+
+            const stillAttachedQuestionIdSet = new Set(
+                stillAttachedQuestionIds.map(questionId => questionId.toString())
+            );
+
+            const orphanQuestionIds = questionIds.filter(
+                questionId => !stillAttachedQuestionIdSet.has(questionId)
+            );
+
+            if (orphanQuestionIds.length > 0) {
+                const deleteResult = await Question.deleteMany({
+                    _id: { $in: orphanQuestionIds }
+                });
+
+                deletedQuestionCount = deleteResult.deletedCount || 0;
+            }
+        }
+
         return res.json({
-            message: "Quiz deleted successfully"
+            message: "Quiz deleted successfully",
+            deletedQuestionCount
         });
     } catch (error) {
         return next(error);
