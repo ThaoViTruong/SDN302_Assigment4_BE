@@ -11,6 +11,48 @@ const connectDB = require("../config/db");
 
 const PORT = process.env.PORT || 3000;
 
+const buildStartupErrorDetails = (error) => {
+    const details = {
+        name: error?.name || "Error",
+        message: error?.message || "Unknown startup error"
+    };
+
+    if (error?.code) {
+        details.code = error.code;
+    }
+
+    if (error?.cause) {
+        details.cause = {
+            name: error.cause.name || "Error",
+            message: error.cause.message || "Unknown cause"
+        };
+
+        if (error.cause.code) {
+            details.cause.code = error.cause.code;
+        }
+    }
+
+    if (error?.reason) {
+        details.reason = {
+            type: error.reason.constructor?.name || typeof error.reason
+        };
+
+        if (typeof error.reason.message === "string") {
+            details.reason.message = error.reason.message;
+        }
+
+        if (error.reason.code) {
+            details.reason.code = error.reason.code;
+        }
+
+        if (error.reason.servers instanceof Map) {
+            details.reason.serverCount = error.reason.servers.size;
+        }
+    }
+
+    return details;
+};
+
 const startServer = async () => {
     try {
         await connectDB();
@@ -19,7 +61,7 @@ const startServer = async () => {
             console.log(`Server running at http://localhost:${PORT}`);
         });
     } catch (error) {
-        console.error("Failed to start server:", error.message);
+        console.error("Failed to start server:", buildStartupErrorDetails(error));
         process.exit(1);
     }
 };
