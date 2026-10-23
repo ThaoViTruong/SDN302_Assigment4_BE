@@ -1,0 +1,78 @@
+
+require("dotenv").config();
+
+const express = require("express");
+const cors = require("cors");
+
+const quizRoutes = require("./routes/quizRoutes");
+const questionRoutes = require("./routes/questionRoutes");
+const userRoutes = require("./routes/userRoutes"); 
+
+const app = express();
+
+const defaultOrigins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+];
+
+const configuredOrigins = (process.env.CLIENT_ORIGIN || process.env.CORS_ORIGIN || "")
+    .split(",")
+    .map(origin => origin.trim())
+    .filter(Boolean);
+
+const allowedOrigins = configuredOrigins.length > 0
+    ? configuredOrigins
+    : defaultOrigins;
+
+const corsOptions = {
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error("Origin is not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+};
+
+// Middleware
+app.use(cors(corsOptions));
+app.use(express.json());
+
+// Routes
+app.use("/users", userRoutes); 
+app.use("/quizzes", quizRoutes);
+app.use("/questions", questionRoutes);
+
+// Home page
+app.get("/", (req, res) => {
+    res.json({
+        message: "Assignment 4 quiz API is running"
+    });
+});
+
+// Return JSON for unknown API routes instead of Express HTML.
+app.use((req, res) => {
+    res.status(404).json({
+        message: "Route not found"
+    });
+});
+
+app.use((error, req, res, next) => {
+    const statusCode = error.status || error.statusCode || 500;
+
+    if (statusCode >= 500) {
+        console.error(error);
+    }
+
+    if (res.headersSent) {
+        return next(error);
+    }
+
+    res.status(statusCode).json({
+        message: error.message || "Internal server error"
+    });
+});
+
+module.exports = app;
