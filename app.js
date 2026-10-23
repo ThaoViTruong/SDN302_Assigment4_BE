@@ -8,6 +8,10 @@ const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 
+const productionOrigins = [
+    "https://sdn-302-assigment4-fe.vercel.app"
+];
+
 const defaultOrigins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -18,9 +22,11 @@ const configuredOrigins = (process.env.CLIENT_ORIGIN || process.env.CORS_ORIGIN 
     .map(origin => origin.trim())
     .filter(Boolean);
 
-const allowedOrigins = configuredOrigins.length > 0
-    ? configuredOrigins
-    : defaultOrigins;
+const allowedOrigins = [...new Set([
+    ...defaultOrigins,
+    ...productionOrigins,
+    ...configuredOrigins
+])];
 
 const corsOptions = {
     origin(origin, callback) {
@@ -36,6 +42,7 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 
 // Routes
