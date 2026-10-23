@@ -30,9 +30,29 @@ const allowedOrigins = [...new Set([
     ...configuredOrigins
 ])];
 
+const isAllowedVercelPreviewOrigin = origin => {
+    try {
+        const { protocol, hostname } = new URL(origin);
+
+        if (protocol !== "https:") {
+            return false;
+        }
+
+        return /^sdn-302-assigment4(?:-[a-z0-9-]+)?-thaovitruongs-projects\.vercel\.app$/i.test(
+            hostname
+        );
+    } catch {
+        return false;
+    }
+};
+
 const corsOptions = {
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (
+            !origin ||
+            allowedOrigins.includes(origin) ||
+            isAllowedVercelPreviewOrigin(origin)
+        ) {
             return callback(null, true);
         }
 
