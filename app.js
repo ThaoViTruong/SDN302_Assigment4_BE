@@ -1,7 +1,9 @@
 
 const express = require("express");
 const cors = require("cors");
+const swaggerUi = require("swagger-ui-express");
 
+const swaggerSpec = require("./config/swagger");
 const quizRoutes = require("./routes/quizRoutes");
 const questionRoutes = require("./routes/questionRoutes");
 const userRoutes = require("./routes/userRoutes"); 
@@ -46,6 +48,10 @@ app.options(/.*/, cors(corsOptions));
 app.use(express.json());
 
 // Routes
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get("/api-docs.json", (req, res) => {
+    res.json(swaggerSpec);
+});
 app.use("/users", userRoutes); 
 app.use("/quizzes", quizRoutes);
 app.use("/questions", questionRoutes);

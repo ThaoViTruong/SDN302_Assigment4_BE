@@ -8,8 +8,7 @@ const {
     updateQuiz,
     deleteQuiz,
     populateCapitalQuestions,
-    addQuestionToQuiz,
-    addManyQuestionsToQuiz,
+    addQuestionsToQuiz,
     attachExistingQuestionToQuiz,
     detachQuestionFromQuiz,
     submitQuiz
@@ -37,20 +36,12 @@ router.post("/:quizId/submit", verifyUser, submitQuiz);
 // POST: Chỉ Admin được tạo Quiz
 router.post("/", verifyUser, verifyAdmin, createQuiz);
 
-// POST: Chỉ Admin được thêm một câu hỏi vào Quiz
-router.post(
-    "/:quizId/question",
-    verifyUser,
-    verifyAdmin,
-    addQuestionToQuiz
-);
-
-// POST: Chỉ Admin được thêm nhiều câu hỏi vào Quiz
+// POST: Chỉ Admin được thêm một hoặc nhiều câu hỏi vào Quiz
 router.post(
     "/:quizId/questions",
     verifyUser,
     verifyAdmin,
-    addManyQuestionsToQuiz
+    addQuestionsToQuiz
 );
 
 // POST: Chỉ Admin được gắn một câu hỏi có sẵn vào Quiz

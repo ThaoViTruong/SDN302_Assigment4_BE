@@ -70,6 +70,14 @@ const validateQuestionPayload = (payload) => {
     return null;
 };
 
+const buildQuestionCreatePayload = (payload, authorId) => ({
+    ...payload,
+    text: payload.text.trim(),
+    options: payload.options.map(option => option.trim()),
+    keywords: payload.keywords || [],
+    author: authorId
+});
+
 const validateQuizPayload = async (payload) => {
     if (typeof payload.title !== "string" || payload.title.trim() === "") {
         return "Quiz title is required";
@@ -283,8 +291,8 @@ const populateCapitalQuestions = async (req, res, next) => {
     }
 };
 
-// POST /quizzes/:quizId/question
-const addQuestionToQuiz = async (req, res, next) => {
+// POST /quizzes/:quizId/questions
+const addQuestionsToQuiz = async (req, res, next) => {
     try {
         if (!isValidId(req.params.quizId)) {
             return res.status(400).json({
@@ -300,62 +308,25 @@ const addQuestionToQuiz = async (req, res, next) => {
             });
         }
 
-        const { author, ...questionData } = req.body;
-        const validationMessage = validateQuestionPayload(questionData);
+        const payload = req.body;
+        const isBulkCreate = Array.isArray(payload);
 
-        if (validationMessage) {
-            return res.status(400).json({
-                message: validationMessage
-            });
-        }
-
-        const question = await Question.create({
-            ...questionData,
-            text: questionData.text.trim(),
-            options: questionData.options.map(option => option.trim()),
-            keywords: questionData.keywords || [],
-            author: req.user._id
-        });
-
-        quiz.questions.push(question._id);
-        await quiz.save();
-
-        return res.status(201).json({
-            message: "Question added to quiz successfully",
-            question: sanitizeQuestion(question, true),
-            quiz: sanitizeQuiz(quiz)
-        });
-    } catch (error) {
-        return next(error);
-    }
-};
-
-// POST /quizzes/:quizId/questions
-const addManyQuestionsToQuiz = async (req, res, next) => {
-    try {
-        if (!isValidId(req.params.quizId)) {
-            return res.status(400).json({
-                message: "Invalid quiz id"
-            });
-        }
-
-        if (!Array.isArray(req.body) || req.body.length === 0) {
+        if (isBulkCreate && payload.length === 0) {
             return res.status(400).json({
                 message: "Request body must contain at least one question"
             });
         }
 
-        const quiz = await Quiz.findById(req.params.quizId);
-
-        if (!quiz) {
-            return res.status(404).json({
-                message: "Quiz not found"
+        if (!isBulkCreate && (!payload || typeof payload !== "object")) {
+            return res.status(400).json({
+                message: "Request body must contain a question object or an array of questions"
             });
         }
 
+        const rawQuestions = isBulkCreate ? payload : [payload];
         const questionsToCreate = [];
 
-        for (const item of req.body) {
+        for (const item of rawQuestions) {
             const { author, ...questionData } = item;
             const validationMessage = validateQuestionPayload(questionData);
 
@@ -365,22 +336,20 @@ const addManyQuestionsToQuiz = async (req, res, next) => {
                 });
             }
 
-            questionsToCreate.push({
-                ...questionData,
-                text: questionData.text.trim(),
-                options: questionData.options.map(option => option.trim()),
-                keywords: questionData.keywords || [],
-                author: req.user._id
-            });
+            questionsToCreate.push(buildQuestionCreatePayload(questionData, req.user._id));
         }
 
-        const questions = await Question.insertMany(questionsToCreate);
+        const questions = isBulkCreate
+            ? await Question.insertMany(questionsToCreate)
+            : [await Question.create(questionsToCreate[0])];
 
         quiz.questions.push(...questions.map(question => question._id));
         await quiz.save();
 
         return res.status(201).json({
-            message: "Questions added to quiz successfully",
+            message: isBulkCreate
+                ? "Questions added to quiz successfully"
+                : "Question added to quiz successfully",
             questions: questions.map(question => sanitizeQuestion(question, true)),
             quiz: sanitizeQuiz(quiz)
         });
@@ -570,8 +539,7 @@ module.exports = {
     updateQuiz,
     deleteQuiz,
     populateCapitalQuestions,
-    addQuestionToQuiz,
-    addManyQuestionsToQuiz,
+    addQuestionsToQuiz,
     attachExistingQuestionToQuiz,
     detachQuestionFromQuiz,
     submitQuiz
